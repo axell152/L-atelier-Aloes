@@ -3,16 +3,27 @@ import sql, { initDb } from '../lib/db';
 import { optimizeImage } from '../lib/images';
 
 // Page type « Mes réalisations » réutilisée par bijoux, aquarelle, couture.
-export default async function SectionGalleryPage({ section, title, subtitle }) {
+export default async function SectionGalleryPage({ section, title, subtitle, subcategory, backHref, backLabel }) {
   await initDb();
-  const items = await sql`
-    SELECT * FROM portfolio_items
-    WHERE section = ${section}
-    ORDER BY position, id DESC
-  `;
+  const items = subcategory
+    ? await sql`
+        SELECT * FROM portfolio_items
+        WHERE section = ${section} AND subcategory = ${subcategory}
+        ORDER BY position, id DESC
+      `
+    : await sql`
+        SELECT * FROM portfolio_items
+        WHERE section = ${section}
+        ORDER BY position, id DESC
+      `;
 
   return (
     <div className="max-w-5xl mx-auto space-y-12 pb-20 px-4">
+      {backHref && (
+        <Link href={backHref} className="inline-block text-sm font-medium text-[#6B5B52] hover:text-[#5A3E36] transition">
+          ← {backLabel || 'Retour'}
+        </Link>
+      )}
       <div className="text-center space-y-4 py-8 bg-white rounded-3xl border border-[#EFECE6] shadow-xs px-6">
         <span className="text-xs font-semibold tracking-wider uppercase bg-[#FF9CCB]/30 text-[#5A3E36] px-3 py-1 rounded-full">
           Créations artisanales & sur-mesure

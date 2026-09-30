@@ -35,6 +35,8 @@ export default function AddPortfolioForm({ action, sections = [] }) {
   const [isPending, startTransition] = useTransition();
   const [status, setStatus] = useState('idle'); // idle | compressing | submitting
   const [error, setError] = useState('');
+  const [sectionSlug, setSectionSlug] = useState(sections[0]?.slug);
+  const subcategories = sections.find((s) => s.slug === sectionSlug)?.subcategories || [];
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -56,6 +58,7 @@ export default function AddPortfolioForm({ action, sections = [] }) {
           setError(result.error);
         } else {
           form.reset();
+          setSectionSlug(sections[0]?.slug);
         }
       } catch (err) {
         setError("L'envoi a échoué. Réessaie dans un instant.");
@@ -73,6 +76,7 @@ export default function AddPortfolioForm({ action, sections = [] }) {
         <select
           name="section"
           defaultValue={sections[0]?.slug}
+          onChange={(e) => setSectionSlug(e.target.value)}
           className="w-full border border-[#EFECE6] rounded-2xl px-4 py-2.5 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-[#5A3E36]"
         >
           {sections.map((s) => (
@@ -80,6 +84,22 @@ export default function AddPortfolioForm({ action, sections = [] }) {
           ))}
         </select>
       </div>
+      {subcategories.length > 0 && (
+        <div>
+          <label className="block text-sm font-medium text-[#6B5B52] mb-1">Sous-catégorie</label>
+          <select
+            required
+            name="subcategory"
+            defaultValue=""
+            className="w-full border border-[#EFECE6] rounded-2xl px-4 py-2.5 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-[#5A3E36]"
+          >
+            <option value="" disabled>Choisir...</option>
+            {subcategories.map((s) => (
+              <option key={s.slug} value={s.slug}>{s.label}</option>
+            ))}
+          </select>
+        </div>
+      )}
       <div>
         <label className="block text-sm font-medium text-[#6B5B52] mb-1">Photo</label>
         <input required type="file" name="image" accept="image/*" className="w-full text-sm text-[#6B5B52]" />

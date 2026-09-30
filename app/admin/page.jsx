@@ -7,7 +7,7 @@ import { uploadImage, deleteImage, isCloudinaryUrl } from '../../lib/cloudinary'
 import PricingTableEditor from '../../components/PricingTableEditor';
 import PricingTableRow from '../../components/PricingTableRow';
 import AddPortfolioForm from '../../components/AddPortfolioForm';
-import { GALLERY_SECTIONS, isGallerySection } from '../../lib/gallery';
+import { GALLERY_SECTIONS, isGallerySection, getSubcategories, isSubcategory } from '../../lib/gallery';
 import { optimizeImage } from '../../lib/images';
 
 export const revalidate = 0;
@@ -133,6 +133,12 @@ export default async function AdminPage() {
     const caption = formData.get('caption');
     const sectionInput = (formData.get('section') || '').toString();
     const section = isGallerySection(sectionInput) ? sectionInput : 'personnalisation';
+    const hasSubcategories = getSubcategories(section).length > 0;
+    const subInput = (formData.get('subcategory') || '').toString();
+    if (hasSubcategories && !isSubcategory(section, subInput)) {
+      return { error: 'Choisis une sous-catégorie.' };
+    }
+    const subcategory = hasSubcategories ? subInput : null;
     let imageUrl = '';
 
     try {
@@ -147,8 +153,9 @@ export default async function AdminPage() {
 
     if (!imageUrl) return { error: 'Aucune photo reçue.' };
 
-    await sql`INSERT INTO portfolio_items (image_url, caption, section) VALUES (${imageUrl}, ${caption}, ${section})`;
+    await sql`INSERT INTO portfolio_items (image_url, caption, section, subcategory) VALUES (${imageUrl}, ${caption}, ${section}, ${subcategory})`;
     revalidatePath(`/${section}`);
+    if (subcategory) revalidatePath(`/${section}/${subcategory}`);
     revalidatePath('/admin');
     return { ok: true };
   }
@@ -157,9 +164,11 @@ export default async function AdminPage() {
     'use server';
     const id = formData.get('id');
     let section = 'personnalisation';
+    let subcategory = null;
 
     try {
-      const [item] = await sql`SELECT image_url, section FROM portfolio_items WHERE id = ${id}`;
+      const [item] = await sql`SELECT image_url, section, subcategory FROM portfolio_items WHERE id = ${id}`;
+      subcategory = item?.subcategory || null;
       if (isGallerySection(item?.section)) section = item.section;
       if (isCloudinaryUrl(item?.image_url)) {
         await deleteImage(item.image_url).catch(() => {});
@@ -172,6 +181,7 @@ export default async function AdminPage() {
 
     await sql`DELETE FROM portfolio_items WHERE id = ${id}`;
     revalidatePath(`/${section}`);
+    if (subcategory) revalidatePath(`/${section}/${subcategory}`);
     revalidatePath('/admin');
   }
 
@@ -255,6 +265,32 @@ export default async function AdminPage() {
         const sectionItems = portfolioItems.filter(
           (item) => (item.section || 'personnalisation') === section.slug
         );
+
+        const renderRows = (list) => (
+          <div className="divide-y divide-[#F7F4EE]">
+            {list.map((item) => (
+              <div key={item.id} className="py-4 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+                <div className="flex items-center gap-4 min-w-0">
+                  <img src={optimizeImage(item.image_url, 150)} alt="" className="w-12 h-12 rounded-xl object-cover shrink-0" />
+                  <p className="font-semibold text-[#4A3B32] break-words">{item.caption || '(sans légende)'}</p>
+                </div>
+                <form action={deletePortfolioItem}>
+                  <input type="hidden" name="id" value={item.id} />
+                  <button type="submit" className="px-3 py-1.5 text-xs font-medium rounded-xl bg-red-50 text-red-600 hover:bg-red-100 shrink-0">
+                    Supprimer
+                  </button>
+                </form>
+              </div>
+            ))}
+          </div>
+        );
+
+        const subs = section.subcategories || [];
+        // Photos d'une section à sous-catégories sans sous-catégorie (ajoutées avant l'arrivée des sous-catégories)
+        const orphans = subs.length > 0
+          ? sectionItems.filter((item) => !subs.some((sc) => sc.slug === item.subcategory))
+          : [];
+
         return (
           <div key={section.slug} className="bg-white p-6 rounded-3xl border border-[#EFECE6] shadow-xs">
             <h2 className="text-xl font-serif font-bold text-[#4A3B32] mb-4">
@@ -262,22 +298,33 @@ export default async function AdminPage() {
             </h2>
             {sectionItems.length === 0 ? (
               <p className="text-sm text-[#6B5B52]">Aucune photo ajoutée pour le moment.</p>
+            ) : subs.length === 0 ? (
+              renderRows(sectionItems)
             ) : (
-              <div className="divide-y divide-[#F7F4EE]">
-                {sectionItems.map((item) => (
-                  <div key={item.id} className="py-4 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
-                    <div className="flex items-center gap-4 min-w-0">
-                      <img src={optimizeImage(item.image_url, 150)} alt="" className="w-12 h-12 rounded-xl object-cover shrink-0" />
-                      <p className="font-semibold text-[#4A3B32] break-words">{item.caption || '(sans légende)'}</p>
+              <div className="space-y-6">
+                {subs.map((sc) => {
+                  const list = sectionItems.filter((item) => item.subcategory === sc.slug);
+                  return (
+                    <div key={sc.slug}>
+                      <h3 className="text-sm font-semibold uppercase tracking-wide text-[#6B5B52] mb-1">
+                        {sc.label} ({list.length})
+                      </h3>
+                      {list.length === 0 ? (
+                        <p className="text-sm text-[#6B5B52]">Aucune photo.</p>
+                      ) : (
+                        renderRows(list)
+                      )}
                     </div>
-                    <form action={deletePortfolioItem}>
-                      <input type="hidden" name="id" value={item.id} />
-                      <button type="submit" className="px-3 py-1.5 text-xs font-medium rounded-xl bg-red-50 text-red-600 hover:bg-red-100 shrink-0">
-                        Supprimer
-                      </button>
-                    </form>
+                  );
+                })}
+                {orphans.length > 0 && (
+                  <div>
+                    <h3 className="text-sm font-semibold uppercase tracking-wide text-red-600 mb-1">
+                      Sans sous-catégorie, non visibles sur le site ({orphans.length})
+                    </h3>
+                    {renderRows(orphans)}
                   </div>
-                ))}
+                )}
               </div>
             )}
           </div>
