@@ -1,12 +1,12 @@
 import './globals.css';
-import Link from 'next/link';
+import SiteHeader from '../components/SiteHeader';
 export const metadata = {
   metadataBase: new URL('https://l-atelier-aloes-umber.vercel.app'),
-  title: "L'Atelier Aloès | Objets et vêtements personnalisés",
-  description: 'Stickers, T-shirts, Mugs et personnalisations uniques faites main.',
+  title: "L'Atelier Aloès | Créations artisanales",
+  description: 'Personnalisation, bijoux, aquarelle, couture et mail club : créations uniques faites main.',
   openGraph: {
-    title: "L'Atelier Aloès | Objets et vêtements personnalisés",
-    description: 'Stickers, T-shirts, Mugs et personnalisations uniques faites main.',
+    title: "L'Atelier Aloès | Créations artisanales",
+    description: 'Personnalisation, bijoux, aquarelle, couture et mail club : créations uniques faites main.',
     images: ['/logo.png'],
   },
 };
@@ -15,28 +15,7 @@ export default function RootLayout({ children }) {
     <html lang="fr" className="h-full">
       <body className="min-h-full flex flex-col bg-[#FDFBF7] text-[#4A3B32] antialiased selection:bg-[#E8A598] selection:text-white">
         
-        {/* Barre de navigation */}
-        <header className="sticky top-0 z-50 bg-[#FF9CCB] border-b border-[#EFECE6]">
-  <div className="max-w-6xl mx-auto px-4 sm:px-6 h-20 flex items-center justify-between">
-    <Link href="/" className="flex items-center gap-3 group">
-  <img src="/logo.png" alt="L'Atelier de l'Aloès" className="h-16 w-auto object-cover rounded-xl shadow-xs" />
-</Link>
-    <nav className="flex items-center gap-4 sm:gap-6">
-      <Link href="/" className="text-sm font-medium text-[#4A3B32] hover:text-[#2F241D] transition">
-        Accueil
-      </Link>
-      <Link href="/tarifs" className="text-sm font-medium text-[#4A3B32] hover:text-[#2F241D] transition">
-        Tarifs
-      </Link>
-      <Link
-        href="/contact"
-        className="text-sm font-semibold bg-[#5A3E36] hover:bg-[#4A3B32] text-white px-4 py-2 rounded-xl transition"
-      >
-        Contact / Devis
-      </Link>
-    </nav>
-  </div>
-</header>
+        <SiteHeader />
         {/* Contenu principal */}
         <main className="flex-1 max-w-6xl w-full mx-auto px-4 sm:px-6 py-12">
           {children}
