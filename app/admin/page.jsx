@@ -2,10 +2,13 @@ import { cookies } from 'next/headers';
 import { redirect } from 'next/navigation';
 import sql, { initDb } from '../../lib/db';
 import { revalidatePath } from 'next/cache';
-import { del, put } from '@vercel/blob';
+import { del } from '@vercel/blob';
+import { uploadImage, deleteImage, isCloudinaryUrl } from '../../lib/cloudinary';
 import PricingTableEditor from '../../components/PricingTableEditor';
 import PricingTableRow from '../../components/PricingTableRow';
 import AddPortfolioForm from '../../components/AddPortfolioForm';
+import { GALLERY_SECTIONS, isGallerySection, getSubcategories, isSubcategory } from '../../lib/gallery';
+import { optimizeImage } from '../../lib/images';
 
 export const revalidate = 0;
 
@@ -128,34 +131,48 @@ export default async function AdminPage() {
   async function addPortfolioItem(formData) {
     'use server';
     const caption = formData.get('caption');
+    const sectionInput = (formData.get('section') || '').toString();
+    const section = isGallerySection(sectionInput) ? sectionInput : 'personnalisation';
+    const hasSubcategories = getSubcategories(section).length > 0;
+    const subInput = (formData.get('subcategory') || '').toString();
+    if (hasSubcategories && !isSubcategory(section, subInput)) {
+      return { error: 'Choisis une sous-catégorie.' };
+    }
+    const subcategory = hasSubcategories ? subInput : null;
     let imageUrl = '';
 
     try {
       const file = formData.get('image');
       if (file && file.size > 0) {
-        const blob = await put(`portfolio/${crypto.randomUUID()}-${file.name}`, file, {
-          access: 'public',
-        });
-        imageUrl = blob.url;
+        imageUrl = await uploadImage(file, 'portfolio');
       }
     } catch (e) {
       console.log('Erreur upload portfolio:', e);
+      return { error: e.message || "L'envoi de la photo a échoué." };
     }
 
-    if (!imageUrl) return;
+    if (!imageUrl) return { error: 'Aucune photo reçue.' };
 
-    await sql`INSERT INTO portfolio_items (image_url, caption) VALUES (${imageUrl}, ${caption})`;
-    revalidatePath('/personnalisation');
+    await sql`INSERT INTO portfolio_items (image_url, caption, section, subcategory) VALUES (${imageUrl}, ${caption}, ${section}, ${subcategory})`;
+    revalidatePath(`/${section}`);
+    if (subcategory) revalidatePath(`/${section}/${subcategory}`);
     revalidatePath('/admin');
+    return { ok: true };
   }
 
   async function deletePortfolioItem(formData) {
     'use server';
     const id = formData.get('id');
+    let section = 'personnalisation';
+    let subcategory = null;
 
     try {
-      const [item] = await sql`SELECT image_url FROM portfolio_items WHERE id = ${id}`;
-      if (item?.image_url && item.image_url.startsWith('http')) {
+      const [item] = await sql`SELECT image_url, section, subcategory FROM portfolio_items WHERE id = ${id}`;
+      subcategory = item?.subcategory || null;
+      if (isGallerySection(item?.section)) section = item.section;
+      if (isCloudinaryUrl(item?.image_url)) {
+        await deleteImage(item.image_url).catch(() => {});
+      } else if (item?.image_url && item.image_url.startsWith('http')) {
         await del(item.image_url).catch(() => {});
       }
     } catch (e) {
@@ -163,7 +180,8 @@ export default async function AdminPage() {
     }
 
     await sql`DELETE FROM portfolio_items WHERE id = ${id}`;
-    revalidatePath('/personnalisation');
+    revalidatePath(`/${section}`);
+    if (subcategory) revalidatePath(`/${section}/${subcategory}`);
     revalidatePath('/admin');
   }
 
@@ -201,7 +219,7 @@ export default async function AdminPage() {
     <div className="max-w-4xl mx-auto space-y-10 pb-20 px-4">
       <div>
         <h1 className="text-3xl font-serif font-bold text-[#4A3B32] mb-2">Espace Administration</h1>
-        <p className="text-[#6B5B52]">Gérez vos tarifs et votre portfolio.</p>
+        <p className="text-[#6B5B52]">Gérez vos tarifs et les réalisations de chaque section.</p>
       </div>
 
       <div className="bg-white p-6 rounded-3xl border border-[#EFECE6] shadow-xs">
@@ -239,20 +257,21 @@ export default async function AdminPage() {
       </div>
 
       <div className="bg-white p-6 rounded-3xl border border-[#EFECE6] shadow-xs">
-        <h2 className="text-xl font-serif font-bold text-[#4A3B32] mb-4">Ajouter une photo au portfolio</h2>
-        <AddPortfolioForm action={addPortfolioItem} />
+        <h2 className="text-xl font-serif font-bold text-[#4A3B32] mb-4">Ajouter une photo</h2>
+        <AddPortfolioForm action={addPortfolioItem} sections={GALLERY_SECTIONS} />
       </div>
 
-      <div className="bg-white p-6 rounded-3xl border border-[#EFECE6] shadow-xs">
-        <h2 className="text-xl font-serif font-bold text-[#4A3B32] mb-4">Mon portfolio ({portfolioItems.length})</h2>
-        {portfolioItems.length === 0 ? (
-          <p className="text-sm text-[#6B5B52]">Aucune photo ajoutée pour le moment.</p>
-        ) : (
+      {GALLERY_SECTIONS.map((section) => {
+        const sectionItems = portfolioItems.filter(
+          (item) => (item.section || 'personnalisation') === section.slug
+        );
+
+        const renderRows = (list) => (
           <div className="divide-y divide-[#F7F4EE]">
-            {portfolioItems.map((item) => (
+            {list.map((item) => (
               <div key={item.id} className="py-4 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
                 <div className="flex items-center gap-4 min-w-0">
-                  <img src={item.image_url} alt="" className="w-12 h-12 rounded-xl object-cover shrink-0" />
+                  <img src={optimizeImage(item.image_url, 150)} alt="" className="w-12 h-12 rounded-xl object-cover shrink-0" />
                   <p className="font-semibold text-[#4A3B32] break-words">{item.caption || '(sans légende)'}</p>
                 </div>
                 <form action={deletePortfolioItem}>
@@ -264,8 +283,53 @@ export default async function AdminPage() {
               </div>
             ))}
           </div>
-        )}
-      </div>
+        );
+
+        const subs = section.subcategories || [];
+        // Photos d'une section à sous-catégories sans sous-catégorie (ajoutées avant l'arrivée des sous-catégories)
+        const orphans = subs.length > 0
+          ? sectionItems.filter((item) => !subs.some((sc) => sc.slug === item.subcategory))
+          : [];
+
+        return (
+          <div key={section.slug} className="bg-white p-6 rounded-3xl border border-[#EFECE6] shadow-xs">
+            <h2 className="text-xl font-serif font-bold text-[#4A3B32] mb-4">
+              Réalisations : {section.label} ({sectionItems.length})
+            </h2>
+            {sectionItems.length === 0 ? (
+              <p className="text-sm text-[#6B5B52]">Aucune photo ajoutée pour le moment.</p>
+            ) : subs.length === 0 ? (
+              renderRows(sectionItems)
+            ) : (
+              <div className="space-y-6">
+                {subs.map((sc) => {
+                  const list = sectionItems.filter((item) => item.subcategory === sc.slug);
+                  return (
+                    <div key={sc.slug}>
+                      <h3 className="text-sm font-semibold uppercase tracking-wide text-[#6B5B52] mb-1">
+                        {sc.label} ({list.length})
+                      </h3>
+                      {list.length === 0 ? (
+                        <p className="text-sm text-[#6B5B52]">Aucune photo.</p>
+                      ) : (
+                        renderRows(list)
+                      )}
+                    </div>
+                  );
+                })}
+                {orphans.length > 0 && (
+                  <div>
+                    <h3 className="text-sm font-semibold uppercase tracking-wide text-red-600 mb-1">
+                      Sans sous-catégorie, non visibles sur le site ({orphans.length})
+                    </h3>
+                    {renderRows(orphans)}
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
+        );
+      })}
     </div>
   );
 }
