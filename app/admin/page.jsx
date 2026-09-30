@@ -6,6 +6,7 @@ import { del, put } from '@vercel/blob';
 import PricingTableEditor from '../../components/PricingTableEditor';
 import PricingTableRow from '../../components/PricingTableRow';
 import AddPortfolioForm from '../../components/AddPortfolioForm';
+import { GALLERY_SECTIONS, isGallerySection } from '../../lib/gallery';
 
 export const revalidate = 0;
 
@@ -128,6 +129,8 @@ export default async function AdminPage() {
   async function addPortfolioItem(formData) {
     'use server';
     const caption = formData.get('caption');
+    const sectionInput = (formData.get('section') || '').toString();
+    const section = isGallerySection(sectionInput) ? sectionInput : 'personnalisation';
     let imageUrl = '';
 
     try {
@@ -144,17 +147,19 @@ export default async function AdminPage() {
 
     if (!imageUrl) return;
 
-    await sql`INSERT INTO portfolio_items (image_url, caption) VALUES (${imageUrl}, ${caption})`;
-    revalidatePath('/personnalisation');
+    await sql`INSERT INTO portfolio_items (image_url, caption, section) VALUES (${imageUrl}, ${caption}, ${section})`;
+    revalidatePath(`/${section}`);
     revalidatePath('/admin');
   }
 
   async function deletePortfolioItem(formData) {
     'use server';
     const id = formData.get('id');
+    let section = 'personnalisation';
 
     try {
-      const [item] = await sql`SELECT image_url FROM portfolio_items WHERE id = ${id}`;
+      const [item] = await sql`SELECT image_url, section FROM portfolio_items WHERE id = ${id}`;
+      if (isGallerySection(item?.section)) section = item.section;
       if (item?.image_url && item.image_url.startsWith('http')) {
         await del(item.image_url).catch(() => {});
       }
@@ -163,7 +168,7 @@ export default async function AdminPage() {
     }
 
     await sql`DELETE FROM portfolio_items WHERE id = ${id}`;
-    revalidatePath('/personnalisation');
+    revalidatePath(`/${section}`);
     revalidatePath('/admin');
   }
 
@@ -201,7 +206,7 @@ export default async function AdminPage() {
     <div className="max-w-4xl mx-auto space-y-10 pb-20 px-4">
       <div>
         <h1 className="text-3xl font-serif font-bold text-[#4A3B32] mb-2">Espace Administration</h1>
-        <p className="text-[#6B5B52]">Gérez vos tarifs et votre portfolio.</p>
+        <p className="text-[#6B5B52]">Gérez vos tarifs et les réalisations de chaque section.</p>
       </div>
 
       <div className="bg-white p-6 rounded-3xl border border-[#EFECE6] shadow-xs">
@@ -239,33 +244,42 @@ export default async function AdminPage() {
       </div>
 
       <div className="bg-white p-6 rounded-3xl border border-[#EFECE6] shadow-xs">
-        <h2 className="text-xl font-serif font-bold text-[#4A3B32] mb-4">Ajouter une photo au portfolio</h2>
-        <AddPortfolioForm action={addPortfolioItem} />
+        <h2 className="text-xl font-serif font-bold text-[#4A3B32] mb-4">Ajouter une photo</h2>
+        <AddPortfolioForm action={addPortfolioItem} sections={GALLERY_SECTIONS} />
       </div>
 
-      <div className="bg-white p-6 rounded-3xl border border-[#EFECE6] shadow-xs">
-        <h2 className="text-xl font-serif font-bold text-[#4A3B32] mb-4">Mon portfolio ({portfolioItems.length})</h2>
-        {portfolioItems.length === 0 ? (
-          <p className="text-sm text-[#6B5B52]">Aucune photo ajoutée pour le moment.</p>
-        ) : (
-          <div className="divide-y divide-[#F7F4EE]">
-            {portfolioItems.map((item) => (
-              <div key={item.id} className="py-4 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
-                <div className="flex items-center gap-4 min-w-0">
-                  <img src={item.image_url} alt="" className="w-12 h-12 rounded-xl object-cover shrink-0" />
-                  <p className="font-semibold text-[#4A3B32] break-words">{item.caption || '(sans légende)'}</p>
-                </div>
-                <form action={deletePortfolioItem}>
-                  <input type="hidden" name="id" value={item.id} />
-                  <button type="submit" className="px-3 py-1.5 text-xs font-medium rounded-xl bg-red-50 text-red-600 hover:bg-red-100 shrink-0">
-                    Supprimer
-                  </button>
-                </form>
+      {GALLERY_SECTIONS.map((section) => {
+        const sectionItems = portfolioItems.filter(
+          (item) => (item.section || 'personnalisation') === section.slug
+        );
+        return (
+          <div key={section.slug} className="bg-white p-6 rounded-3xl border border-[#EFECE6] shadow-xs">
+            <h2 className="text-xl font-serif font-bold text-[#4A3B32] mb-4">
+              Réalisations : {section.label} ({sectionItems.length})
+            </h2>
+            {sectionItems.length === 0 ? (
+              <p className="text-sm text-[#6B5B52]">Aucune photo ajoutée pour le moment.</p>
+            ) : (
+              <div className="divide-y divide-[#F7F4EE]">
+                {sectionItems.map((item) => (
+                  <div key={item.id} className="py-4 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+                    <div className="flex items-center gap-4 min-w-0">
+                      <img src={item.image_url} alt="" className="w-12 h-12 rounded-xl object-cover shrink-0" />
+                      <p className="font-semibold text-[#4A3B32] break-words">{item.caption || '(sans légende)'}</p>
+                    </div>
+                    <form action={deletePortfolioItem}>
+                      <input type="hidden" name="id" value={item.id} />
+                      <button type="submit" className="px-3 py-1.5 text-xs font-medium rounded-xl bg-red-50 text-red-600 hover:bg-red-100 shrink-0">
+                        Supprimer
+                      </button>
+                    </form>
+                  </div>
+                ))}
               </div>
-            ))}
+            )}
           </div>
-        )}
-      </div>
+        );
+      })}
     </div>
   );
 }

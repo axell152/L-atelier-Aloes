@@ -31,7 +31,7 @@ async function compressImage(file, maxDim, quality) {
   }
 }
 
-export default function AddPortfolioForm({ action }) {
+export default function AddPortfolioForm({ action, sections = [] }) {
   const [isPending, startTransition] = useTransition();
   const [status, setStatus] = useState('idle'); // idle | compressing | submitting
 
@@ -58,6 +58,18 @@ export default function AddPortfolioForm({ action }) {
 
   return (
     <form onSubmit={handleSubmit} className="space-y-4">
+      <div>
+        <label className="block text-sm font-medium text-[#6B5B52] mb-1">Section</label>
+        <select
+          name="section"
+          defaultValue={sections[0]?.slug}
+          className="w-full border border-[#EFECE6] rounded-2xl px-4 py-2.5 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-[#5A3E36]"
+        >
+          {sections.map((s) => (
+            <option key={s.slug} value={s.slug}>{s.label}</option>
+          ))}
+        </select>
+      </div>
       <div>
         <label className="block text-sm font-medium text-[#6B5B52] mb-1">Photo</label>
         <input required type="file" name="image" accept="image/*" className="w-full text-sm text-[#6B5B52]" />
