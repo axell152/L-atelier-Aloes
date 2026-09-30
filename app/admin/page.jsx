@@ -9,6 +9,7 @@ import PricingTableRow from '../../components/PricingTableRow';
 import AddPortfolioForm from '../../components/AddPortfolioForm';
 import { GALLERY_SECTIONS, isGallerySection, getSubcategories, isSubcategory } from '../../lib/gallery';
 import { optimizeImage } from '../../lib/images';
+import Link from 'next/link';
 
 export const revalidate = 0;
 
@@ -221,6 +222,17 @@ export default async function AdminPage() {
         <h1 className="text-3xl font-serif font-bold text-[#4A3B32] mb-2">Espace Administration</h1>
         <p className="text-[#6B5B52]">Gérez vos tarifs et les réalisations de chaque section.</p>
       </div>
+
+      <Link
+        href="/admin/bijoux"
+        className="flex items-center justify-between bg-white p-6 rounded-3xl border border-[#EFECE6] shadow-xs hover:shadow-md transition"
+      >
+        <div>
+          <span className="font-serif font-bold text-lg text-[#4A3B32] block">Gérer les bijoux</span>
+          <span className="text-sm text-[#6B5B52]">Fiches produits : photos, prix, description, disponibilité</span>
+        </div>
+        <span className="text-[#6B5B52]">→</span>
+      </Link>
 
       <div className="bg-white p-6 rounded-3xl border border-[#EFECE6] shadow-xs">
         <h2 className="text-xl font-serif font-bold text-[#4A3B32] mb-4">Créer un tableau de tarifs</h2>
