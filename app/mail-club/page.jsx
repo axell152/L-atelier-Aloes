@@ -26,7 +26,7 @@ export default function MailClubPage() {
         }
       `}</style>
 
-      <div className="mc-overlay fixed inset-0 z-[60] bg-[#6FBF8B] flex flex-col items-center justify-center gap-8">
+      <div className="mc-overlay fixed inset-0 z-[60] bg-[#284231] flex flex-col items-center justify-center gap-8">
         <h1 className="mc-text text-5xl md:text-7xl font-serif font-bold text-white">
           À venir...
         </h1>
