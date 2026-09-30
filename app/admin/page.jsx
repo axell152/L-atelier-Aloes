@@ -2,7 +2,8 @@ import { cookies } from 'next/headers';
 import { redirect } from 'next/navigation';
 import sql, { initDb } from '../../lib/db';
 import { revalidatePath } from 'next/cache';
-import { del, put } from '@vercel/blob';
+import { del } from '@vercel/blob';
+import { uploadImage, deleteImage, isCloudinaryUrl } from '../../lib/cloudinary';
 import PricingTableEditor from '../../components/PricingTableEditor';
 import PricingTableRow from '../../components/PricingTableRow';
 import AddPortfolioForm from '../../components/AddPortfolioForm';
@@ -136,20 +137,19 @@ export default async function AdminPage() {
     try {
       const file = formData.get('image');
       if (file && file.size > 0) {
-        const blob = await put(`portfolio/${crypto.randomUUID()}-${file.name}`, file, {
-          access: 'public',
-        });
-        imageUrl = blob.url;
+        imageUrl = await uploadImage(file, 'portfolio');
       }
     } catch (e) {
       console.log('Erreur upload portfolio:', e);
+      return { error: e.message || "L'envoi de la photo a échoué." };
     }
 
-    if (!imageUrl) return;
+    if (!imageUrl) return { error: 'Aucune photo reçue.' };
 
     await sql`INSERT INTO portfolio_items (image_url, caption, section) VALUES (${imageUrl}, ${caption}, ${section})`;
     revalidatePath(`/${section}`);
     revalidatePath('/admin');
+    return { ok: true };
   }
 
   async function deletePortfolioItem(formData) {
@@ -160,7 +160,9 @@ export default async function AdminPage() {
     try {
       const [item] = await sql`SELECT image_url, section FROM portfolio_items WHERE id = ${id}`;
       if (isGallerySection(item?.section)) section = item.section;
-      if (item?.image_url && item.image_url.startsWith('http')) {
+      if (isCloudinaryUrl(item?.image_url)) {
+        await deleteImage(item.image_url).catch(() => {});
+      } else if (item?.image_url && item.image_url.startsWith('http')) {
         await del(item.image_url).catch(() => {});
       }
     } catch (e) {

@@ -34,6 +34,7 @@ async function compressImage(file, maxDim, quality) {
 export default function AddPortfolioForm({ action, sections = [] }) {
   const [isPending, startTransition] = useTransition();
   const [status, setStatus] = useState('idle'); // idle | compressing | submitting
+  const [error, setError] = useState('');
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -47,9 +48,18 @@ export default function AddPortfolioForm({ action, sections = [] }) {
     }
 
     setStatus('submitting');
+    setError('');
     startTransition(async () => {
-      await action(formData);
-      form.reset();
+      try {
+        const result = await action(formData);
+        if (result?.error) {
+          setError(result.error);
+        } else {
+          form.reset();
+        }
+      } catch (err) {
+        setError("L'envoi a échoué. Réessaie dans un instant.");
+      }
       setStatus('idle');
     });
   };
@@ -83,6 +93,11 @@ export default function AddPortfolioForm({ action, sections = [] }) {
           className="w-full border border-[#EFECE6] rounded-2xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#5A3E36]"
         />
       </div>
+      {error && (
+        <p className="text-sm text-red-600 bg-red-50 rounded-2xl px-4 py-2.5">
+          Photo non enregistrée : {error}
+        </p>
+      )}
       <button
         type="submit"
         disabled={busy}
