@@ -49,7 +49,7 @@ export default async function AdminPage() {
       VALUES (${category}, ${title}, ${description}, ${columns}, ${rows}, ${position}, ${wrapLabels})
     `;
 
-    revalidatePath('/tarifs');
+    revalidatePath('/personnalisation/tarifs');
     revalidatePath('/admin');
   }
 
@@ -69,7 +69,7 @@ export default async function AdminPage() {
       WHERE id = ${id}
     `;
 
-    revalidatePath('/tarifs');
+    revalidatePath('/personnalisation/tarifs');
     revalidatePath('/admin');
   }
 
@@ -113,7 +113,7 @@ export default async function AdminPage() {
       `;
     }
 
-    revalidatePath('/tarifs');
+    revalidatePath('/personnalisation/tarifs');
     revalidatePath('/admin');
   }
 
@@ -121,7 +121,7 @@ export default async function AdminPage() {
     'use server';
     const id = formData.get('id');
     await sql`DELETE FROM pricing_tables WHERE id = ${id}`;
-    revalidatePath('/tarifs');
+    revalidatePath('/personnalisation/tarifs');
     revalidatePath('/admin');
   }
 
@@ -145,7 +145,7 @@ export default async function AdminPage() {
     if (!imageUrl) return;
 
     await sql`INSERT INTO portfolio_items (image_url, caption) VALUES (${imageUrl}, ${caption})`;
-    revalidatePath('/');
+    revalidatePath('/personnalisation');
     revalidatePath('/admin');
   }
 
@@ -163,7 +163,7 @@ export default async function AdminPage() {
     }
 
     await sql`DELETE FROM portfolio_items WHERE id = ${id}`;
-    revalidatePath('/');
+    revalidatePath('/personnalisation');
     revalidatePath('/admin');
   }
 

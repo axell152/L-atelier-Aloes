@@ -21,7 +21,7 @@ export default function ContactPage() {
     <div className="max-w-2xl mx-auto px-4 py-12 space-y-8">
       <div>
         <Link href="/" className="text-sm text-[#6B5B52] hover:underline mb-4 inline-block">
-          ← Retour au catalogue
+          ← Retour à l'accueil
         </Link>
         <h1 className="text-3xl font-serif font-bold text-[#4A3B32] mb-2">Contact & Sur-mesure</h1>
         <p className="text-[#6B5B52]">
