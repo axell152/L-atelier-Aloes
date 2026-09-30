@@ -8,6 +8,7 @@ import PricingTableEditor from '../../components/PricingTableEditor';
 import PricingTableRow from '../../components/PricingTableRow';
 import AddPortfolioForm from '../../components/AddPortfolioForm';
 import { GALLERY_SECTIONS, isGallerySection } from '../../lib/gallery';
+import { optimizeImage } from '../../lib/images';
 
 export const revalidate = 0;
 
@@ -266,7 +267,7 @@ export default async function AdminPage() {
                 {sectionItems.map((item) => (
                   <div key={item.id} className="py-4 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
                     <div className="flex items-center gap-4 min-w-0">
-                      <img src={item.image_url} alt="" className="w-12 h-12 rounded-xl object-cover shrink-0" />
+                      <img src={optimizeImage(item.image_url, 150)} alt="" className="w-12 h-12 rounded-xl object-cover shrink-0" />
                       <p className="font-semibold text-[#4A3B32] break-words">{item.caption || '(sans légende)'}</p>
                     </div>
                     <form action={deletePortfolioItem}>

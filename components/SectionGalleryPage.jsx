@@ -1,5 +1,6 @@
 import Link from 'next/link';
 import sql, { initDb } from '../lib/db';
+import { optimizeImage } from '../lib/images';
 
 // Page type « Mes réalisations » réutilisée par bijoux, aquarelle, couture.
 export default async function SectionGalleryPage({ section, title, subtitle }) {
@@ -36,7 +37,7 @@ export default async function SectionGalleryPage({ section, title, subtitle }) {
               >
                 <div className="aspect-square overflow-hidden bg-[#F7F4EE]">
                   <img
-                    src={item.image_url}
+                    src={optimizeImage(item.image_url)}
                     alt={item.caption || `${title} - L'Atelier Aloès`}
                     className="w-full h-full object-cover group-hover:scale-105 transition duration-300"
                   />

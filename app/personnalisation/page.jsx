@@ -1,5 +1,6 @@
 import sql, { initDb } from '../../lib/db';
 import Link from 'next/link';
+import { optimizeImage } from '../../lib/images';
 
 export const revalidate = 0;
 
@@ -39,7 +40,7 @@ export default async function HomePage() {
               >
                 <div className="aspect-square overflow-hidden bg-[#F7F4EE]">
                   <img
-                    src={item.image_url}
+                    src={optimizeImage(item.image_url)}
                     alt={item.caption || "Réalisation L'Atelier Aloès"}
                     className="w-full h-full object-cover group-hover:scale-105 transition duration-300"
                   />
