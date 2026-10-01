@@ -1,10 +1,8 @@
 'use client';
-import { useState } from 'react';
 import { optimizeImage } from '../lib/images';
 
-export default function ProductGallery({ images, name }) {
-  const [current, setCurrent] = useState(0);
-
+// Galerie contrôlée : la photo affichée est choisie par le parent (ProductShowcase).
+export default function ProductGallery({ images, name, current, onSelect }) {
   if (!images || images.length === 0) {
     return (
       <div className="aspect-square rounded-3xl bg-[#F7F4EE] border border-[#EFECE6] flex items-center justify-center text-[#6B5B52] text-sm">
@@ -24,7 +22,7 @@ export default function ProductGallery({ images, name }) {
             <button
               key={url}
               type="button"
-              onClick={() => setCurrent(i)}
+              onClick={() => onSelect(i)}
               aria-label={`Voir la photo ${i + 1}`}
               className={`aspect-square rounded-xl overflow-hidden border-2 transition ${
                 i === current ? 'border-[#5A3E36]' : 'border-transparent opacity-70 hover:opacity-100'

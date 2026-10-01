@@ -1,10 +1,9 @@
 'use client';
-import { useState } from 'react';
 import Link from 'next/link';
 
 // Choix de la couleur + boutons de commande (le message WhatsApp reprend la couleur choisie).
-export default function ProductOrder({ name, categoryLabel, colors, available, whatsappNumber }) {
-  const [color, setColor] = useState(null);
+// Couleur contrôlée par le parent (ProductShowcase) pour synchroniser la photo affichée.
+export default function ProductOrder({ name, categoryLabel, colors, available, whatsappNumber, color, onColorChange }) {
   const needsColor = colors.length > 0;
   const canOrder = !needsColor || color;
 
@@ -25,7 +24,7 @@ export default function ProductOrder({ name, categoryLabel, colors, available, w
               <button
                 key={c}
                 type="button"
-                onClick={() => setColor(c)}
+                onClick={() => onColorChange(c)}
                 aria-pressed={color === c}
                 className={`px-4 py-2 rounded-full text-sm font-medium border transition ${
                   color === c

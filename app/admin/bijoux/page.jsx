@@ -5,7 +5,7 @@ import { revalidatePath } from 'next/cache';
 import sql, { initDb } from '../../../lib/db';
 import { uploadImage, deleteImage } from '../../../lib/cloudinary';
 import { optimizeImage } from '../../../lib/images';
-import { JEWELRY_SUBCATEGORIES, getJewelrySubcategory, parseImages, parseColors, splitColors, formatPrice } from '../../../lib/bijoux';
+import { JEWELRY_SUBCATEGORIES, getJewelrySubcategory, parseImages, parseColors, parseImageColors, splitColors, formatPrice } from '../../../lib/bijoux';
 import AddJewelryForm from '../../../components/AddJewelryForm';
 import JewelryImageUploader from '../../../components/JewelryImageUploader';
 
@@ -96,12 +96,18 @@ export default async function AdminBijouxPage() {
     const isAvailable = formData.get('is_available') === 'on';
     const colors = JSON.stringify(splitColors(formData.get('colors')));
 
-    const [before] = await sql`SELECT subcategory FROM jewelry_items WHERE id = ${id}`;
+    const [before] = await sql`SELECT subcategory, image_colors FROM jewelry_items WHERE id = ${id}`;
+    // On garde seulement les associations photo -> couleur dont la couleur existe encore
+    const keptColors = splitColors(formData.get('colors'));
+    const imageColors = Object.fromEntries(
+      Object.entries(parseImageColors(before?.image_colors)).filter(([, c]) => keptColors.includes(c))
+    );
     await sql`
       UPDATE jewelry_items
       SET name = ${name}, subcategory = ${subcategory}, price = ${price},
           materials = ${materials}, description = ${description}, is_available = ${isAvailable},
-          colors = ${colors}
+          colors = ${colors},
+          image_colors = ${JSON.stringify(imageColors)}
       WHERE id = ${id}
     `;
     if (before?.subcategory && before.subcategory !== subcategory) refresh(before.subcategory, id);
@@ -124,11 +130,27 @@ export default async function AdminBijouxPage() {
     'use server';
     const id = Number(formData.get('id'));
     const url = (formData.get('url') || '').toString();
-    const [item] = await sql`SELECT images, subcategory FROM jewelry_items WHERE id = ${id}`;
+    const [item] = await sql`SELECT images, image_colors, subcategory FROM jewelry_items WHERE id = ${id}`;
     if (!item) return;
     const images = parseImages(item.images).filter((u) => u !== url);
-    await sql`UPDATE jewelry_items SET images = ${JSON.stringify(images)} WHERE id = ${id}`;
+    const imageColors = parseImageColors(item.image_colors);
+    delete imageColors[url];
+    await sql`UPDATE jewelry_items SET images = ${JSON.stringify(images)}, image_colors = ${JSON.stringify(imageColors)} WHERE id = ${id}`;
     await deleteImage(url).catch(() => {});
+    refresh(item.subcategory, id);
+  }
+
+  async function setImageColor(formData) {
+    'use server';
+    const id = Number(formData.get('id'));
+    const url = (formData.get('url') || '').toString();
+    const color = (formData.get('color') || '').toString();
+    const [item] = await sql`SELECT images, colors, image_colors, subcategory FROM jewelry_items WHERE id = ${id}`;
+    if (!item || !parseImages(item.images).includes(url)) return;
+    const imageColors = parseImageColors(item.image_colors);
+    if (color && parseColors(item.colors).includes(color)) imageColors[url] = color;
+    else delete imageColors[url];
+    await sql`UPDATE jewelry_items SET image_colors = ${JSON.stringify(imageColors)} WHERE id = ${id}`;
     refresh(item.subcategory, id);
   }
 
@@ -179,6 +201,8 @@ export default async function AdminBijouxPage() {
               <div className="space-y-6">
                 {list.map((item) => {
                   const images = parseImages(item.images);
+                  const itemColors = parseColors(item.colors);
+                  const itemImageColors = parseImageColors(item.image_colors);
                   const price = formatPrice(item.price);
                   return (
                     <div key={item.id} className="border border-[#EFECE6] rounded-2xl p-4 space-y-4">
@@ -218,6 +242,23 @@ export default async function AdminBijouxPage() {
                             <div key={url} className="w-24 space-y-1">
                               <img src={optimizeImage(url, 200)} alt="" className="w-24 h-24 rounded-xl object-cover" />
                               <div className="flex flex-col gap-1">
+                                {itemColors.length > 0 && (
+                                  <form action={setImageColor} className="flex gap-1">
+                                    <input type="hidden" name="id" value={item.id} />
+                                    <input type="hidden" name="url" value={url} />
+                                    <select
+                                      name="color"
+                                      defaultValue={itemImageColors[url] || ''}
+                                      className="w-full min-w-0 text-[10px] border border-[#EFECE6] rounded-lg bg-white px-1 py-1"
+                                    >
+                                      <option value="">Sans couleur</option>
+                                      {itemColors.map((c) => (
+                                        <option key={c} value={c}>{c}</option>
+                                      ))}
+                                    </select>
+                                    <button type="submit" className="text-[10px] rounded-lg bg-[#5A3E36] text-white px-2 shrink-0">OK</button>
+                                  </form>
+                                )}
                                 {i === 0 ? (
                                   <span className="text-[10px] text-center font-semibold text-[#5A3E36]">Photo principale</span>
                                 ) : (
