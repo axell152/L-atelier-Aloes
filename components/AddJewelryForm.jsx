@@ -78,6 +78,10 @@ export default function AddJewelryForm({ createAction, imageAction, subcategorie
         </div>
       </div>
       <div>
+        <label className={label}>Couleurs proposées (optionnel, séparées par des virgules)</label>
+        <input name="colors" className={field} placeholder="Ex. Doré, Argenté, Rose, Noir" />
+      </div>
+      <div>
         <label className={label}>Description (optionnel)</label>
         <textarea name="description" rows={4} className={field} placeholder="Taille, particularités, entretien..." />
       </div>

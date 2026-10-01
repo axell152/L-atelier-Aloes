@@ -5,7 +5,7 @@ import { revalidatePath } from 'next/cache';
 import sql, { initDb } from '../../../lib/db';
 import { uploadImage, deleteImage } from '../../../lib/cloudinary';
 import { optimizeImage } from '../../../lib/images';
-import { JEWELRY_SUBCATEGORIES, getJewelrySubcategory, parseImages, formatPrice } from '../../../lib/bijoux';
+import { JEWELRY_SUBCATEGORIES, getJewelrySubcategory, parseImages, parseColors, splitColors, formatPrice } from '../../../lib/bijoux';
 import AddJewelryForm from '../../../components/AddJewelryForm';
 import JewelryImageUploader from '../../../components/JewelryImageUploader';
 
@@ -47,11 +47,12 @@ export default async function AdminBijouxPage() {
     const materials = (formData.get('materials') || '').toString().trim() || null;
     const description = (formData.get('description') || '').toString().trim() || null;
     const isAvailable = formData.get('is_available') === 'on';
+    const colors = JSON.stringify(splitColors(formData.get('colors')));
 
     try {
       const [row] = await sql`
-        INSERT INTO jewelry_items (name, subcategory, price, materials, description, is_available)
-        VALUES (${name}, ${subcategory}, ${price}, ${materials}, ${description}, ${isAvailable})
+        INSERT INTO jewelry_items (name, subcategory, price, materials, description, is_available, colors)
+        VALUES (${name}, ${subcategory}, ${price}, ${materials}, ${description}, ${isAvailable}, ${colors})
         RETURNING id
       `;
       refresh(subcategory);
@@ -93,12 +94,14 @@ export default async function AdminBijouxPage() {
     const materials = (formData.get('materials') || '').toString().trim() || null;
     const description = (formData.get('description') || '').toString().trim() || null;
     const isAvailable = formData.get('is_available') === 'on';
+    const colors = JSON.stringify(splitColors(formData.get('colors')));
 
     const [before] = await sql`SELECT subcategory FROM jewelry_items WHERE id = ${id}`;
     await sql`
       UPDATE jewelry_items
       SET name = ${name}, subcategory = ${subcategory}, price = ${price},
-          materials = ${materials}, description = ${description}, is_available = ${isAvailable}
+          materials = ${materials}, description = ${description}, is_available = ${isAvailable},
+          colors = ${colors}
       WHERE id = ${id}
     `;
     if (before?.subcategory && before.subcategory !== subcategory) refresh(before.subcategory, id);
@@ -190,6 +193,7 @@ export default async function AdminBijouxPage() {
                             <p className="font-semibold text-[#4A3B32] break-words">{item.name}</p>
                             <p className="text-sm text-[#6B5B52]">
                               {price || 'Prix sur demande'} · {item.is_available ? 'Disponible' : 'Indisponible'} · {images.length} photo(s)
+                              {parseColors(item.colors).length > 0 && ` · ${parseColors(item.colors).length} couleur(s)`}
                             </p>
                             <Link
                               href={`/bijoux/${item.subcategory}/${item.id}`}
@@ -253,6 +257,12 @@ export default async function AdminBijouxPage() {
                               <input name="price" defaultValue={item.price ?? ''} inputMode="decimal" className={field} placeholder="Prix en € (vide = sur demande)" />
                               <input name="materials" defaultValue={item.materials ?? ''} className={field} placeholder="Matières" />
                             </div>
+                            <input
+                              name="colors"
+                              defaultValue={parseColors(item.colors).join(', ')}
+                              className={field}
+                              placeholder="Couleurs proposées, séparées par des virgules"
+                            />
                             <textarea name="description" rows={3} defaultValue={item.description ?? ''} className={field} placeholder="Description" />
                             <label className="flex items-center gap-2 text-sm text-[#4A3B32]">
                               <input type="checkbox" name="is_available" defaultChecked={item.is_available} className="w-4 h-4 accent-[#5A3E36]" />

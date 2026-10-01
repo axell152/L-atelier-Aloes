@@ -1,9 +1,10 @@
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import sql, { initDb } from '../../../../lib/db';
-import { getJewelrySubcategory, parseImages, formatPrice } from '../../../../lib/bijoux';
+import { getJewelrySubcategory, parseImages, parseColors, formatPrice } from '../../../../lib/bijoux';
 import { WHATSAPP_NUMBER } from '../../../../lib/site';
 import ProductGallery from '../../../../components/ProductGallery';
+import ProductOrder from '../../../../components/ProductOrder';
 
 export const revalidate = 0;
 
@@ -28,8 +29,7 @@ export default async function JewelryPage({ params }) {
 
   const images = parseImages(item.images);
   const price = formatPrice(item.price);
-  const message = `Bonjour, je suis intéressé(e) par le bijou « ${item.name} » (${sc.label}).`;
-  const whatsappHref = `https://wa.me/${WHATSAPP_NUMBER}?text=${encodeURIComponent(message)}`;
+  const colors = parseColors(item.colors);
 
   return (
     <div className="max-w-5xl mx-auto pb-20 px-4 space-y-8">
@@ -66,22 +66,13 @@ export default async function JewelryPage({ params }) {
             </div>
           )}
 
-          <div className="flex flex-col sm:flex-row gap-3 pt-2">
-            <a
-              href={whatsappHref}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="text-center bg-[#5A3E36] hover:bg-[#4A3B32] text-white font-bold px-8 py-3.5 rounded-2xl transition"
-            >
-              {item.is_available ? 'Commander sur WhatsApp' : 'Demander un bijou similaire'}
-            </a>
-            <Link
-              href="/contact"
-              className="text-center bg-white border border-[#EFECE6] hover:border-[#5A3E36] text-[#4A3B32] font-semibold px-8 py-3.5 rounded-2xl transition"
-            >
-              Me contacter
-            </Link>
-          </div>
+          <ProductOrder
+            name={item.name}
+            categoryLabel={sc.label}
+            colors={colors}
+            available={item.is_available}
+            whatsappNumber={WHATSAPP_NUMBER}
+          />
         </div>
       </div>
     </div>
