@@ -1,17 +1,15 @@
 import Link from 'next/link';
 import sql, { initDb } from '../../lib/db';
-import { getSubcategories } from '../../lib/gallery';
+import { JEWELRY_SUBCATEGORIES } from '../../lib/bijoux';
 
 export const revalidate = 0;
 export const metadata = { title: "Bijoux | L'Atelier Aloès" };
 
 export default async function BijouxPage() {
   await initDb();
-  const subcategories = getSubcategories('bijoux');
   const counts = await sql`
     SELECT subcategory, COUNT(*)::int AS total
-    FROM portfolio_items
-    WHERE section = 'bijoux'
+    FROM jewelry_items
     GROUP BY subcategory
   `;
   const countOf = (slug) => counts.find((c) => c.subcategory === slug)?.total || 0;
@@ -29,7 +27,7 @@ export default async function BijouxPage() {
       </div>
 
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-        {subcategories.map((sc) => (
+        {JEWELRY_SUBCATEGORIES.map((sc) => (
           <Link
             key={sc.slug}
             href={`/bijoux/${sc.slug}`}
